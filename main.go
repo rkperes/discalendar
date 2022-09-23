@@ -42,6 +42,31 @@ func main() {
 		log.Fatal(err)
 	}
 
+	_, err = dg.ApplicationCommandCreate(AppID, "", &discordgo.ApplicationCommand{
+		ID:            "event",
+		Name:          "event",
+		Type:          discordgo.ChatApplicationCommand,
+		ApplicationID: AppID,
+		Description:   "Register an event at guild-level",
+		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "start-at",
+				Description: `"now" or timestamp in format "yyyy-MM-dd hh:mm"`,
+				Required:    true,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "duration",
+				Description: `Duration string, such as "15m", "1h", "1h30m". Defaults to "30m".`,
+				Required:    false,
+			},
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Register the messageCreate func as a callback for MessageCreate events.
 	dg.AddHandler(applicationCommand)
 
@@ -71,6 +96,17 @@ func applicationCommand(s *discordgo.Session, ic *discordgo.InteractionCreate) {
 		data := interaction.ApplicationCommandData()
 		switch data.Name {
 		case "ping":
+			s.InteractionRespond(
+				interaction,
+				&discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "pong!",
+					},
+				},
+			)
+		case "event":
+			fmt.Printf("event:\n%+v\n\n", data)
 			s.InteractionRespond(
 				interaction,
 				&discordgo.InteractionResponse{
