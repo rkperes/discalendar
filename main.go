@@ -2,16 +2,10 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
-
-	"github.com/bwmarrin/discordgo"
+	"rkperes/discalendar/server"
 )
 
-// Variables used for command line parameters
 var (
 	Token string
 	AppID string
@@ -24,100 +18,12 @@ func init() {
 }
 
 func main() {
-	// Create a new Discord session using the provided bot token.
-	dg, err := discordgo.New("Bot " + Token)
-	if err != nil {
-		fmt.Println("error creating Discord session,", err)
-		return
-	}
-
-	_, err = dg.ApplicationCommandCreate(AppID, "", &discordgo.ApplicationCommand{
-		ID:            "ping",
-		Name:          "ping",
-		Type:          discordgo.ChatApplicationCommand,
-		ApplicationID: AppID,
-		Description:   "ping",
-	})
-	if err != nil {
+	s := server.NewServer(AppID, Token)
+	if err := s.Run(); err != nil {
 		log.Fatal(err)
 	}
-
-	_, err = dg.ApplicationCommandCreate(AppID, "", &discordgo.ApplicationCommand{
-		ID:            "event",
-		Name:          "event",
-		Type:          discordgo.ChatApplicationCommand,
-		ApplicationID: AppID,
-		Description:   "Register an event at guild-level",
-		Options: []*discordgo.ApplicationCommandOption{
-			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "start-at",
-				Description: `"now" or timestamp in format "yyyy-MM-dd hh:mm"`,
-				Required:    true,
-			},
-			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "duration",
-				Description: `Duration string, such as "15m", "1h", "1h30m". Defaults to "30m".`,
-				Required:    false,
-			},
-		},
-	})
-	if err != nil {
+	s.Wait()
+	if err := s.Shutdown(); err != nil {
 		log.Fatal(err)
-	}
-
-	// Register the messageCreate func as a callback for MessageCreate events.
-	dg.AddHandler(applicationCommand)
-
-	// In this example, we only care about receiving message events.
-	dg.Identify.Intents = discordgo.IntentsGuildMessages
-
-	// Open a websocket connection to Discord and begin listening.
-	err = dg.Open()
-	if err != nil {
-		fmt.Println("error opening connection,", err)
-		return
-	}
-
-	// Wait here until CTRL-C or other term signal is received.
-	fmt.Println("Bot is now running. Press CTRL-C to exit.")
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
-	<-sc
-
-	// Cleanly close down the Discord session.
-	dg.Close()
-}
-
-func applicationCommand(s *discordgo.Session, ic *discordgo.InteractionCreate) {
-	interaction := ic.Interaction
-	if interaction.Type == discordgo.InteractionApplicationCommand {
-		data := interaction.ApplicationCommandData()
-		switch data.Name {
-		case "ping":
-			s.InteractionRespond(
-				interaction,
-				&discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionResponseData{
-						Content: "pong!",
-					},
-				},
-			)
-		case "event":
-			fmt.Printf("event:\n%+v\n\n", data)
-			s.InteractionRespond(
-				interaction,
-				&discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionResponseData{
-						Content: "pong!",
-					},
-				},
-			)
-		default:
-			log.Printf("invalid command %q", data.Name)
-		}
 	}
 }
